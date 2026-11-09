@@ -8,6 +8,7 @@ export default function Ventas() {
   const [productoSeleccionado, setProductoSeleccionado] = useState('')
   const [cantidad, setCantidad] = useState(1)
   const [metodoPago, setMetodoPago] = useState('Efectivo')
+  const [busquedaFiltro, setBusquedaFiltro] = useState('')
   const [carrito, setCarrito] = useState([])
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -28,6 +29,11 @@ export default function Ventas() {
       else cargarProductos()
     })
   }, [])
+
+  // Filtrado en tiempo real según lo que se escriba en el buscador
+  const productosFiltrados = productos.filter((p) =>
+    p.nombre.toLowerCase().includes(busquedaFiltro.toLowerCase())
+  )
 
   function agregarAlCarrito(e) {
     e.preventDefault()
@@ -70,6 +76,7 @@ export default function Ventas() {
 
     setProductoSeleccionado('')
     setCantidad(1)
+    setBusquedaFiltro('') // Resetea el filtro para ver la lista completa de nuevo
   }
 
   function eliminarDelCarrito(id) {
@@ -81,7 +88,6 @@ export default function Ventas() {
     setError('')
     setMensaje('')
 
-    // Intento 1: Guardar con precio_unitario y metodo_pago
     const registrosCompletos = carrito.map((item) => ({
       producto_id: item.id,
       cantidad: item.cantidad,
@@ -92,7 +98,6 @@ export default function Ventas() {
     const { error: ventaError } = await supabase.from('ventas').insert(registrosCompletos)
 
     if (ventaError) {
-      // Intento 2: Fallback si faltara alguna columna
       const registrosSimples = carrito.map((item) => ({
         producto_id: item.id,
         cantidad: item.cantidad,
@@ -114,14 +119,24 @@ export default function Ventas() {
       <h1>Registrar Venta (Combos / Múltiples Ítems)</h1>
 
       <div className="card">
+        {/* Campo de búsqueda independiente */}
+        <div style={{ marginBottom: 12 }}>
+          <input
+            placeholder="🔍 Escribí para buscar producto rápidamente..."
+            value={busquedaFiltro}
+            onChange={(e) => setBusquedaFiltro(e.target.value)}
+          />
+        </div>
+
         <form onSubmit={agregarAlCarrito} className="inline-form">
+          {/* Menú desplegable filtrado dinámicamente */}
           <select
             value={productoSeleccionado}
             onChange={(e) => setProductoSeleccionado(e.target.value)}
             required
           >
-            <option value="">-- Seleccionar producto --</option>
-            {productos.map((p) => (
+            <option value="">-- Seleccionar producto ({productosFiltrados.length}) --</option>
+            {productosFiltrados.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre} - ${p.precio} (Stock: {p.stock})
               </option>
