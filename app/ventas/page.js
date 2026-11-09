@@ -7,6 +7,7 @@ export default function Ventas() {
   const [productos, setProductos] = useState([])
   const [productoSeleccionado, setProductoSeleccionado] = useState('')
   const [cantidad, setCantidad] = useState(1)
+  const [metodoPago, setMetodoPago] = useState('Efectivo')
   const [carrito, setCarrito] = useState([])
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -37,7 +38,6 @@ export default function Ventas() {
       return setError('Por favor seleccioná un producto de la lista.')
     }
 
-    // Conversión explícita a String para comparar números y texto sin errores
     const prod = productos.find((p) => String(p.id) === String(productoSeleccionado))
     if (!prod) {
       return setError('No se encontró el producto seleccionado.')
@@ -81,15 +81,18 @@ export default function Ventas() {
     setError('')
     setMensaje('')
 
-    const registros = carrito.map((item) => ({
+    // Intento 1: Guardar con precio_unitario y metodo_pago
+    const registrosCompletos = carrito.map((item) => ({
       producto_id: item.id,
       cantidad: item.cantidad,
       precio_unitario: item.precio,
+      metodo_pago: metodoPago,
     }))
 
-    const { error: ventaError } = await supabase.from('ventas').insert(registros)
+    const { error: ventaError } = await supabase.from('ventas').insert(registrosCompletos)
 
     if (ventaError) {
+      // Intento 2: Fallback si faltara alguna columna
       const registrosSimples = carrito.map((item) => ({
         producto_id: item.id,
         cantidad: item.cantidad,
@@ -98,8 +101,9 @@ export default function Ventas() {
       if (err2) return setError(err2.message)
     }
 
-    setMensaje('¡Venta registrada con éxito!')
+    setMensaje(`¡Venta cobrada con ${metodoPago} y registrada con éxito!`)
     setCarrito([])
+    setMetodoPago('Efectivo')
     cargarProductos()
   }
 
@@ -141,7 +145,7 @@ export default function Ventas() {
       </div>
 
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>Error: {error}</p>}
-      {mensaje && <p style={{ color: '#16a34a', marginBottom: 16 }}>{mensaje}</p>}
+      {mensaje && <p style={{ color: '#16a34a', marginBottom: 16, fontWeight: 'bold' }}>{mensaje}</p>}
 
       <div className="card">
         <h2 style={{ fontSize: '1.1rem', marginBottom: 12 }}>Resumen de la Venta</h2>
@@ -184,13 +188,30 @@ export default function Ventas() {
               </table>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
-                Total: ${totalVenta}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <label style={{ fontWeight: 600, fontSize: '0.95rem' }}>Método de pago:</label>
+                <select
+                  value={metodoPago}
+                  onChange={(e) => setMetodoPago(e.target.value)}
+                  style={{ width: 'auto', minWidth: 180, fontWeight: 600 }}
+                >
+                  <option value="Efectivo">💵 Efectivo</option>
+                  <option value="Transferencia">🏦 Transferencia</option>
+                  <option value="Mercado Pago">📲 Mercado Pago</option>
+                  <option value="Tarjeta de Crédito">💳 Tarjeta de Crédito</option>
+                  <option value="Tarjeta de Débito">💳 Tarjeta de Débito</option>
+                </select>
               </div>
-              <button onClick={registrarVentaCombo} className="btn" style={{ padding: '12px 20px', fontSize: '1rem' }}>
-                🛒 Confirmar y Descontar Stock
-              </button>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+                  Total: ${totalVenta}
+                </div>
+                <button onClick={registrarVentaCombo} className="btn" style={{ padding: '12px 20px', fontSize: '1rem' }}>
+                  🛒 Confirmar y Descontar Stock
+                </button>
+              </div>
             </div>
           </>
         )}
