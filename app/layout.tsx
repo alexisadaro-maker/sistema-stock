@@ -1,5 +1,5 @@
 import './globals.css'
-import Navbar from '../lib/Navbar'
+import Navbar from '../lib/navbar'
 
 export const metadata = {
   title: 'Sistema de Stock y Ventas',
