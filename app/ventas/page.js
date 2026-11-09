@@ -5,10 +5,11 @@ import { supabase } from '../../lib/supabase'
 
 export default function Ventas() {
   const [productos, setProductos] = useState([])
-  const [productoSeleccionado, setProductoSeleccionado] = useState('')
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
   const [cantidad, setCantidad] = useState(1)
   const [metodoPago, setMetodoPago] = useState('Efectivo')
-  const [busquedaFiltro, setBusquedaFiltro] = useState('')
   const [carrito, setCarrito] = useState([])
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
@@ -30,10 +31,17 @@ export default function Ventas() {
     })
   }, [])
 
-  // Filtrado en tiempo real según lo que se escriba en el buscador
-  const productosFiltrados = productos.filter((p) =>
-    p.nombre.toLowerCase().includes(busquedaFiltro.toLowerCase())
-  )
+  // Filtrado de sugerencias en tiempo real
+  const sugerencias = busqueda.trim() === ''
+    ? []
+    : productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
+
+  function seleccionarProducto(prod) {
+    setProductoSeleccionado(prod)
+    setBusqueda(prod.nombre)
+    setMostrarSugerencias(false)
+    setError('')
+  }
 
   function agregarAlCarrito(e) {
     e.preventDefault()
@@ -41,42 +49,42 @@ export default function Ventas() {
     setMensaje('')
 
     if (!productoSeleccionado) {
-      return setError('Por favor seleccioná un producto de la lista.')
-    }
-
-    const prod = productos.find((p) => String(p.id) === String(productoSeleccionado))
-    if (!prod) {
-      return setError('No se encontró el producto seleccionado.')
+      return setError('Por favor seleccioná un producto de las sugerencias o de la lista.')
     }
 
     const cantNum = Number(cantidad)
     if (cantNum <= 0) return setError('La cantidad debe ser mayor a 0')
-    if (cantNum > prod.stock) return setError(`Stock insuficiente para ${prod.nombre} (Disponible: ${prod.stock})`)
+    if (cantNum > productoSeleccionado.stock) {
+      return setError(`Stock insuficiente para ${productoSeleccionado.nombre} (Disponible: ${productoSeleccionado.stock})`)
+    }
 
-    const existeIndice = carrito.findIndex((item) => String(item.id) === String(prod.id))
+    const existeIndice = carrito.findIndex((item) => String(item.id) === String(productoSeleccionado.id))
     if (existeIndice >= 0) {
       const nuevoCarrito = [...carrito]
       const nuevaCant = nuevoCarrito[existeIndice].cantidad + cantNum
-      if (nuevaCant > prod.stock) return setError(`Supera el stock disponible de ${prod.nombre}`)
+      if (nuevaCant > productoSeleccionado.stock) {
+        return setError(`Supera el stock disponible de ${productoSeleccionado.nombre}`)
+      }
       nuevoCarrito[existeIndice].cantidad = nuevaCant
-      nuevoCarrito[existeIndice].subtotal = nuevaCant * prod.precio
+      nuevoCarrito[existeIndice].subtotal = nuevaCant * productoSeleccionado.precio
       setCarrito(nuevoCarrito)
     } else {
       setCarrito([
         ...carrito,
         {
-          id: prod.id,
-          nombre: prod.nombre,
-          precio: prod.precio,
+          id: productoSeleccionado.id,
+          nombre: productoSeleccionado.nombre,
+          precio: productoSeleccionado.precio,
           cantidad: cantNum,
-          subtotal: cantNum * prod.precio,
+          subtotal: cantNum * productoSeleccionado.precio,
         },
       ])
     }
 
-    setProductoSeleccionado('')
+    // Resetear buscador y producto seleccionado
+    setProductoSeleccionado(null)
+    setBusqueda('')
     setCantidad(1)
-    setBusquedaFiltro('') // Resetea el filtro para ver la lista completa de nuevo
   }
 
   function eliminarDelCarrito(id) {
@@ -119,24 +127,79 @@ export default function Ventas() {
       <h1>Registrar Venta (Combos / Múltiples Ítems)</h1>
 
       <div className="card">
-        {/* Campo de búsqueda independiente */}
-        <div style={{ marginBottom: 12 }}>
+        {/* Buscador inteligente con lista de sugerencias clickeables */}
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.9rem' }}>
+            🔍 Buscar o seleccionar producto:
+          </label>
+          
           <input
-            placeholder="🔍 Escribí para buscar producto rápidamente..."
-            value={busquedaFiltro}
-            onChange={(e) => setBusquedaFiltro(e.target.value)}
+            placeholder="Escribí para buscar (ej: Cerveza, Fernet, Papas)..."
+            value={busqueda}
+            onChange={(e) => {
+              setBusqueda(e.target.value)
+              setProductoSeleccionado(null)
+              setMostrarSugerencias(true)
+            }}
+            onFocus={() => setMostrarSugerencias(true)}
+            style={{ width: '100%' }}
           />
+
+          {/* Menú flotante de sugerencias */}
+          {mostrarSugerencias && sugerencias.length > 0 && (
+            <ul style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              listStyle: 'none',
+              marginTop: 4,
+              maxHeight: 220,
+              overflowY: 'auto',
+              zIndex: 50,
+              padding: 0
+            }}>
+              {sugerencias.map((p) => (
+                <li
+                  key={p.id}
+                  onClick={() => seleccionarProducto(p)}
+                  style={{
+                    padding: '10px 14px',
+                    borderBottom: '1px solid #f1f5f9',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseDown={(e) => e.preventDefault()} // Evita perder foco antes del click
+                >
+                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{p.nombre}</span>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    ${p.precio} | Stock: <strong style={{ color: p.stock <= 5 ? '#dc2626' : '#16a34a' }}>{p.stock}</strong>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
+        {/* Formulario de cantidad y agregar */}
         <form onSubmit={agregarAlCarrito} className="inline-form">
-          {/* Menú desplegable filtrado dinámicamente */}
+          {/* Menú desplegable tradicional como alternativa */}
           <select
-            value={productoSeleccionado}
-            onChange={(e) => setProductoSeleccionado(e.target.value)}
-            required
+            value={productoSeleccionado ? productoSeleccionado.id : ''}
+            onChange={(e) => {
+              const prod = productos.find((p) => String(p.id) === String(e.target.value))
+              if (prod) seleccionarProducto(prod)
+            }}
           >
-            <option value="">-- Seleccionar producto ({productosFiltrados.length}) --</option>
-            {productosFiltrados.map((p) => (
+            <option value="">-- O elegí de la lista completa --</option>
+            {productos.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre} - ${p.precio} (Stock: {p.stock})
               </option>
@@ -157,6 +220,12 @@ export default function Ventas() {
             + Agregar a la venta
           </button>
         </form>
+
+        {productoSeleccionado && (
+          <div style={{ marginTop: 12, padding: '8px 12px', background: '#e0f2fe', borderRadius: 6, color: '#0369a1', fontSize: '0.9rem', fontWeight: 600 }}>
+            ✓ Seleccionado: {productoSeleccionado.nombre} — ${productoSeleccionado.precio} (Stock disponible: {productoSeleccionado.stock})
+          </div>
+        )}
       </div>
 
       {error && <p style={{ color: '#ef4444', marginBottom: 16 }}>Error: {error}</p>}
