@@ -7,6 +7,7 @@ export default function Home() {
   const [productos, setProductos] = useState([])
   const [nombre, setNombre] = useState('')
   const [precio, setPrecio] = useState('')
+  const [stockInicial, setStockInicial] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [error, setError] = useState('')
 
@@ -29,12 +30,31 @@ export default function Home() {
   async function agregar(e) {
     e.preventDefault()
     setError('')
-    const { error } = await supabase
+
+    // 1. Crear producto en la base de datos
+    const { data: prodData, error: prodError } = await supabase
       .from('productos')
       .insert({ nombre, precio: Number(precio) })
-    if (error) return setError(error.message)
+      .select()
+      .single()
+
+    if (prodError) return setError(prodError.message)
+
+    // 2. Registrar el stock inicial como primera compra si es mayor a 0
+    const cantInicial = Number(stockInicial)
+    if (cantInicial > 0 && prodData) {
+      const { error: compraError } = await supabase
+        .from('compras')
+        .insert({ producto_id: prodData.id, cantidad: cantInicial })
+      
+      if (compraError) {
+        await supabase.from('productos').update({ stock: cantInicial }).eq('id', prodData.id)
+      }
+    }
+
     setNombre('')
     setPrecio('')
+    setStockInicial('')
     cargar()
   }
 
@@ -72,19 +92,26 @@ export default function Home() {
       <div className="card">
         <form onSubmit={agregar} className="inline-form">
           <input
-            placeholder="Nombre (ej: Bidón 20 L)"
+            placeholder="Nombre (ej: Cerveza Stella 1L)"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
             required
           />
           <input
-            placeholder="Precio"
+            placeholder="Precio ($)"
             type="number"
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
             required
           />
-          <button type="submit" className="btn">+ Agregar</button>
+          <input
+            placeholder="Stock inicial"
+            type="number"
+            value={stockInicial}
+            onChange={(e) => setStockInicial(e.target.value)}
+            required
+          />
+          <button type="submit" className="btn">+ Agregar Producto</button>
         </form>
       </div>
 
@@ -114,8 +141,8 @@ export default function Home() {
                 <td><strong>{p.nombre}</strong></td>
                 <td>${p.precio}</td>
                 <td>
-                  <span className={`badge ${p.stock <= 0 ? 'badge-danger' : p.stock <= p.stock_minimo ? 'badge-warning' : 'badge-success'}`}>
-                    {p.stock} {p.stock <= p.stock_minimo ? '⚠️' : ''}
+                  <span className={`badge ${p.stock <= 0 ? 'badge-danger' : p.stock <= (p.stock_minimo || 5) ? 'badge-warning' : 'badge-success'}`}>
+                    {p.stock ?? 0} {p.stock <= (p.stock_minimo || 5) ? '⚠️' : ''}
                   </span>
                 </td>
                 <td>
