@@ -30,16 +30,24 @@ export default function Ventas() {
 
   function agregarAlCarrito(e) {
     e.preventDefault()
-    if (!productoSeleccionado) return
+    setError('')
+    setMensaje('')
 
-    const prod = productos.find((p) => p.id === productoSeleccionado)
-    if (!prod) return
+    if (!productoSeleccionado) {
+      return setError('Por favor seleccioná un producto de la lista.')
+    }
+
+    // Conversión explícita a String para comparar números y texto sin errores
+    const prod = productos.find((p) => String(p.id) === String(productoSeleccionado))
+    if (!prod) {
+      return setError('No se encontró el producto seleccionado.')
+    }
 
     const cantNum = Number(cantidad)
     if (cantNum <= 0) return setError('La cantidad debe ser mayor a 0')
     if (cantNum > prod.stock) return setError(`Stock insuficiente para ${prod.nombre} (Disponible: ${prod.stock})`)
 
-    const existeIndice = carrito.findIndex((item) => item.id === prod.id)
+    const existeIndice = carrito.findIndex((item) => String(item.id) === String(prod.id))
     if (existeIndice >= 0) {
       const nuevoCarrito = [...carrito]
       const nuevaCant = nuevoCarrito[existeIndice].cantidad + cantNum
@@ -62,11 +70,10 @@ export default function Ventas() {
 
     setProductoSeleccionado('')
     setCantidad(1)
-    setError('')
   }
 
   function eliminarDelCarrito(id) {
-    setCarrito(carrito.filter((item) => item.id !== id))
+    setCarrito(carrito.filter((item) => String(item.id) !== String(id)))
   }
 
   async function registrarVentaCombo() {
