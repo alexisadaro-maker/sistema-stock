@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 
 export default function Compras() {
   const [productos, setProductos] = useState([])
@@ -30,7 +30,6 @@ export default function Compras() {
     })
   }, [])
 
-  // Sugerencias filtradas en tiempo real mientras se escribe
   const sugerencias = busqueda.trim() === ''
     ? []
     : productos.filter((p) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()))
@@ -67,7 +66,7 @@ export default function Compras() {
 
     if (compraError) return setError(compraError.message)
 
-    setMensaje(`¡Compra de ${cantNum} unidad(es) de "${productoSeleccionado.nombre}" ingresada con éxito!`)
+    setMensaje(`¡Compra de ${cantNum} unidad(es) de ${productoSeleccionado.nombre} ingresada con éxito!`)
     setProductoSeleccionado(null)
     setBusqueda('')
     setCantidad('')
@@ -79,14 +78,13 @@ export default function Compras() {
     <main>
       <div style={{ marginBottom: 12 }}>
         <a href="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
-          ← Volver a productos
+          &larr; Volver a productos
         </a>
       </div>
 
       <h1>Cargar compra</h1>
 
       <div className="card" style={{ maxWidth: 500, margin: '0 auto' }}>
-        {/* Campo de búsqueda predictivo con sugerencias flotantes */}
         <div style={{ position: 'relative', marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.9rem' }}>
             🔍 Buscar producto:
@@ -145,7 +143,6 @@ export default function Compras() {
         </div>
 
         <form onSubmit={guardarCompra} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Menú desplegable tradicional de respaldo */}
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, fontSize: '0.85rem', color: '#64748b' }}>
               O elegir de la lista desplegable:
@@ -201,4 +198,3 @@ export default function Compras() {
       </div>
     </main>
   )
-}
