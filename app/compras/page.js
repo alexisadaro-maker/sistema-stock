@@ -198,3 +198,4 @@ export default function Compras() {
       </div>
     </main>
   )
+}
