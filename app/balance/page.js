@@ -26,12 +26,10 @@ export default function Balance() {
     const { data: dataVentas, error: errVentas } = await supabase
       .from('ventas')
       .select('*, productos(nombre)')
-      .order('created_at', { ascending: false })
 
     const { data: dataCompras, error: errCompras } = await supabase
       .from('compras')
       .select('*, productos(nombre)')
-      .order('created_at', { ascending: false })
 
     if (errVentas || errCompras) {
       setError(errVentas?.message || errCompras?.message)
@@ -40,6 +38,10 @@ export default function Balance() {
       setCompras(dataCompras || [])
     }
     setCargando(false)
+  }
+
+  function obtenerFecha(item) {
+    return item?.created_at || item?.fecha || null
   }
 
   function esDeLaSemanaActual(fechaStr) {
@@ -64,8 +66,8 @@ export default function Balance() {
 
   const filtroFn = periodo === 'semana' ? esDeLaSemanaActual : esDelMesActual
 
-  const ventasFiltradas = ventas.filter((v) => filtroFn(v.created_at))
-  const comprasFiltradas = compras.filter((c) => filtroFn(c.created_at))
+  const ventasFiltradas = ventas.filter((v) => filtroFn(obtenerFecha(v)))
+  const comprasFiltradas = compras.filter((c) => filtroFn(obtenerFecha(c)))
 
   const totalVentas = ventasFiltradas.reduce((acc, v) => {
     const subtotal = v.precio_unitario ? v.precio_unitario * v.cantidad : 0
@@ -224,34 +226,39 @@ export default function Balance() {
                       </td>
                     </tr>
                   ) : (
-                    ventasFiltradas.map((v) => (
-                      <tr key={v.id}>
-                        <td>
-                          {new Date(v.created_at).toLocaleString('es-AR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </td>
-                        <td>
-                          <strong>{v.productos?.nombre || 'Producto sin nombre'}</strong>
-                        </td>
-                        <td>{v.cantidad}</td>
-                        <td>${v.precio_unitario || 0}</td>
-                        <td>
-                          <strong>${(v.precio_unitario || 0) * v.cantidad}</strong>
-                        </td>
-                        <td>
-                          <span
-                            className="badge"
-                            style={{ background: '#e2e8f0', color: '#334155' }}
-                          >
-                            {v.metodo_pago || 'Efectivo'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    ventasFiltradas.map((v) => {
+                      const f = obtenerFecha(v)
+                      return (
+                        <tr key={v.id}>
+                          <td>
+                            {f
+                              ? new Date(f).toLocaleString('es-AR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : '-'}
+                          </td>
+                          <td>
+                            <strong>{v.productos?.nombre || 'Producto sin nombre'}</strong>
+                          </td>
+                          <td>{v.cantidad}</td>
+                          <td>${v.precio_unitario || 0}</td>
+                          <td>
+                            <strong>${(v.precio_unitario || 0) * v.cantidad}</strong>
+                          </td>
+                          <td>
+                            <span
+                              className="badge"
+                              style={{ background: '#e2e8f0', color: '#334155' }}
+                            >
+                              {v.metodo_pago || 'Efectivo'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
