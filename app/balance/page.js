@@ -3,14 +3,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 export default function Balance() {
   const [periodo, setPeriodo] = useState('semana')
   const [ventas, setVentas] = useState([])
   const [compras, setCompras] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [ahora, setAhora] = useState(null)
 
   useEffect(() => {
+    setAhora(new Date())
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) window.location.href = '/login'
       else cargarDatos()
@@ -40,23 +44,25 @@ export default function Balance() {
     setCargando(false)
   }
 
-  const ahora = new Date()
-
   function esDeLaSemanaActual(fechaStr) {
+    if (!fechaStr) return false
+    const refDate = ahora || new Date()
     const fecha = new Date(fechaStr)
-    const inicioSemana = new Date(ahora)
-    const dia = ahora.getDay()
-    const diff = ahora.getDate() - dia + (dia === 0 ? -6 : 1)
+    const inicioSemana = new Date(refDate)
+    const dia = refDate.getDay()
+    const diff = refDate.getDate() - dia + (dia === 0 ? -6 : 1)
     inicioSemana.setDate(diff)
     inicioSemana.setHours(0, 0, 0, 0)
     return fecha >= inicioSemana
   }
 
   function esDelMesActual(fechaStr) {
+    if (!fechaStr) return false
+    const refDate = ahora || new Date()
     const fecha = new Date(fechaStr)
     return (
-      fecha.getMonth() === ahora.getMonth() &&
-      fecha.getFullYear() === ahora.getFullYear()
+      fecha.getMonth() === refDate.getMonth() &&
+      fecha.getFullYear() === refDate.getFullYear()
     )
   }
 
